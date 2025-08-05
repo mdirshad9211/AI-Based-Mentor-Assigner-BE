@@ -1,17 +1,39 @@
 import bcrypt from "bcrypt";
-import User from "../models/user.js";
+import User from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import { inngest } from "../inngest/client.js";
 
 export const signup = async (req, res) => {
-  const { email, password, skills } = req.body;
+  const { email, password, role, skills } = req.body;
+  
+  // Validate required fields
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
+  // Make skills mandatory for moderators
+  if (role === "moderator" && (!skills || skills.length === 0)) {
+    return res.status(400).json({ error: "Skills are required for moderators" });
+  }
+
   try {
     const hashedPassword = await bcrypt.hash(password, 15);
-    const user = await User.create({ email, password: hashedPassword, skills });
-    await inngest.send({
-      name: "user/signup",
-      data: { email },
+    const user = await User.create({ 
+      email, 
+      password: hashedPassword, 
+      role: role || "user", // Default to "user" if no role provided
+      skills: skills || [] 
     });
+    
+    // Try to send Inngest event, but don't fail if it's not configured
+    try {
+      await inngest.send({
+        name: "user/signup",
+        data: { email, role: user.role },
+      });
+    } catch (inngestError) {
+      console.warn("Inngest event failed (this is normal in development):", inngestError.message);
+    }
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
     res.status(201).json({ user, token });
@@ -109,5 +131,19 @@ export const getUser = async (req, res) => {
         console.error("Error in getUser:", error);
         res.status(500).json({ error: "Failed to retrieve user", details: error.message });
         
+    }
+}
+
+export const getModerators = async (req, res) => {
+    try {
+        if(req.user.role !== "admin") {
+            return res.status(403).json({ error: "Forbidden: Only admins can access this route" });
+        }
+
+        const moderators = await User.find({ role: "moderator" }).select("email _id");
+        res.status(200).json(moderators);
+    } catch (error) {
+        console.error("Error in getModerators:", error);
+        res.status(500).json({ error: "Failed to retrieve moderators", details: error.message });
     }
 }

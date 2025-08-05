@@ -1,12 +1,16 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import dotenv from "dotenv";
 import userRoutes from "./routes/user.js";
 import TicketRoutes from "./routes/ticket.js";
 import { serve } from "inngest/express";
 import {inngest} from "./inngest/client.js"
 import { onUserSignup } from "./inngest/functions/on-signup.js";
 import { onTicketCreated } from "./inngest/functions/on-ticket-create.js";
+
+// Load environment variables
+dotenv.config();
 
 
 const app = express();
@@ -26,7 +30,7 @@ app.use(
 
 
 mongoose
-    .connect(process.env.MONGODB_URI)
+    .connect(process.env.MONGO_URI)
     .then(() => {
         console.log("MongoDB connected");
         app.listen(process.env.PORT || 5000, () => {
