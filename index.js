@@ -44,20 +44,47 @@ app.use(express.json());
 
 // Basic route to verify backend is running
 app.get("/", (req, res) => {
-  res.json({ 
-    message: "Backend running successfully!", 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    cors_origins: allowedOrigins
-  });
+  try {
+    res.status(200).json({ 
+      message: "AI Ticket Assistant Backend is running successfully!", 
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      mongodb_status: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      cors_origins: allowedOrigins
+    });
+  } catch (error) {
+    console.error('Root route error:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
 });
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ 
-    status: "OK", 
-    message: "AI Ticket Assistant Backend is running",
-    timestamp: new Date().toISOString()
+  try {
+    res.status(200).json({ 
+      status: "OK", 
+      message: "AI Ticket Assistant Backend is healthy",
+      timestamp: new Date().toISOString(),
+      mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({ 
+      status: "ERROR", 
+      message: error.message 
+    });
+  }
+});
+
+// Simple test endpoint
+app.get("/api/test", (req, res) => {
+  res.status(200).json({ 
+    message: "Test endpoint working",
+    timestamp: new Date().toISOString(),
+    vercel: !!process.env.VERCEL
   });
 });
 
@@ -74,26 +101,55 @@ app.use(
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err.message);
+  console.error('Application Error:', err);
+  console.error('Stack:', err.stack);
   res.status(500).json({ 
     message: 'Internal server error', 
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong!'
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong!',
+    timestamp: new Date().toISOString()
   });
 });
 
 // 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({ message: 'Route not found' });
+  res.status(404).json({ 
+    message: 'Route not found',
+    path: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
 });
 
-mongoose
-    .connect(process.env.MONGO_URI)
+// MongoDB connection with better error handling
+if (process.env.MONGO_URI) {
+  mongoose
+    .connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    })
     .then(() => {
-        console.log("MongoDB connected");
-        app.listen(process.env.PORT || 5000, () => {
-            console.log(`Server is running on port ${process.env.PORT || 5000}`);
-        });
+        console.log("MongoDB connected successfully");
+        // Only start server if not in Vercel environment
+        if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+          const PORT = process.env.PORT || 5000;
+          app.listen(PORT, () => {
+              console.log(`Server is running on port ${PORT}`);
+          });
+        }
     })
     .catch((err) => {
         console.error("MongoDB connection error:", err);
+        // Don't exit in production, let Vercel handle it
+        if (process.env.NODE_ENV !== 'production') {
+          process.exit(1);
+        }
     });
+} else {
+  console.error("MONGO_URI environment variable is not set");
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
+}
+
+// Export the Express app for Vercel
+export default app;
