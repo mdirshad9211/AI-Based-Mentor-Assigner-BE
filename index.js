@@ -15,7 +15,7 @@ dotenv.config();
 
 const app = express();
 // add frontend URL to CORS
-const allowedOrigins = ["https://ai-based-mentor-assigner-fe.vercel.app/", "http://localhost:3000"];
+const allowedOrigins = ["https://ai-based-mentor-assigner-fe.vercel.app", "http://localhost:3000"];
 app.use(cors({
   origin: allowedOrigins
 }));
