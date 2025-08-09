@@ -99,6 +99,8 @@ app.use(
   })
 );
 
+
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Application Error:', err);
