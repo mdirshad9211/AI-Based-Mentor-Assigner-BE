@@ -9,8 +9,10 @@ import {inngest} from "./inngest/client.js"
 import { onUserSignup } from "./inngest/functions/on-signup.js";
 import { onTicketCreated } from "./inngest/functions/on-ticket-create.js";
 
-// Load environment variables
-dotenv.config();
+// Load environment variables only in development
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 
 const app = express();
@@ -38,8 +40,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Handle preflight requests
-app.options('*', cors());
 app.use(express.json());
 
 // Basic route to verify backend is running
@@ -64,13 +64,19 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", userRoutes);
 app.use("/api/tickets", TicketRoutes);
 
-app.use(
-  "/api/inngest",
-  serve({
-    client: inngest,
-    functions: [onUserSignup, onTicketCreated],
-  })
-);
+// Temporarily disable Inngest to prevent path-to-regexp errors
+// app.use(
+//   "/api/inngest",
+//   serve({
+//     client: inngest,
+//     functions: [onUserSignup, onTicketCreated],
+//   })
+// );
+
+// Simple fallback endpoint for Inngest
+app.get("/api/inngest", (req, res) => {
+  res.json({ message: "Inngest temporarily disabled" });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -81,8 +87,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
+// 404 handler - avoid wildcard to prevent path-to-regexp error
+app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
