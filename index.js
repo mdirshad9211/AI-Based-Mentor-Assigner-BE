@@ -18,8 +18,9 @@ const app = express();
 // Enhanced CORS configuration for Vercel deployment
 const allowedOrigins = [
   'http://localhost:3000',
-  'http://localhost:5173', // Vite dev server
-  'https://ai-based-mentor-assigner-fe.vercel.app'
+  'http://localhost:5173', 
+  'https://ai-based-mentor-assigner-fe.vercel.app',
+  'https://ai-based-mentor-assigner-fe.vercel.app/'
 ];
 
 app.use(cors({
