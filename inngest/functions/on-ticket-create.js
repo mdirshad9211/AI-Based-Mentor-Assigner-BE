@@ -6,10 +6,9 @@ import User from "../../models/user.model.js";
 import  analyzeTicket  from "../../utils/ai.js";
 
 export const onTicketCreated = inngest.createFunction(
-  { id: "on-ticket-created", retries: 2 },
-    { event: "ticket/created" },
+  { id: "on-ticket-created", retries: 2, triggers: { event: "ticket/created" } },
 
-    async (event, step)=>{
+    async ({ event, step }) => {
 
         try {
                 const {ticketId} = event.data;
@@ -67,7 +66,7 @@ export const onTicketCreated = inngest.createFunction(
         return user;
       });
 
-      await setp.run("send-email-notification", async () => {
+      await step.run("send-email-notification", async () => {
         if (moderator) {
           const finalTicket = await Ticket.findById(ticket._id);
           await sendMail(
